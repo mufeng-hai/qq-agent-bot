@@ -57,6 +57,7 @@ qq-agent-bot/
 ├── bridge/                    # 自研桥接层
 │   ├── qq-bridge.py           # 主力：3 Provider × 2 模式
 │   └── qq-opencode-bridge.py  # 早期版本（演进记录）
+├── knowledge/                 # RAG 知识库源文件（入库；每条一主题，已脱敏）
 ├── scripts/                   # Windows 启动脚本
 ├── .env.example               # 环境变量模板
 └── .gitignore
