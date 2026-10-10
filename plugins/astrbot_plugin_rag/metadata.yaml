@@ -1,0 +1,6 @@
+name: astrbot_plugin_rag
+desc: RAG 知识库检索增强（Chroma + bge embedding，命中片段注入 system prompt）
+help: 无命令；LLM 请求前自动检索知识库，命中即注入参考，未命中走原有对话
+version: 0.1.0
+author: mufeng-hai
+repo: https://github.com/mufeng-hai/qq-agent-bot
