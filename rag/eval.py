@@ -71,6 +71,19 @@ TESTSET = [
     ("闲聊",  "今天星期几", set()),
     ("闲聊",  "哈哈哈哈哈", set()),
     ("闲聊",  "我去打游戏了", set()),
+    # --- 模型口径类（v3 新增知识维度，应命中标准口径卡）---
+    ("模型",  "你是什么模型", {"bot-model-faq.md"}),
+    ("模型",  "你现在用的是什么模型", {"bot-model-faq.md"}),
+    ("模型",  "你是谁开发的", {"bot-model-faq.md", "bot-tech-faq.md"}),
+    # --- 能力记忆类（v3 新增知识维度）---
+    ("能力",  "你能看图片吗", {"bot-capabilities.md"}),
+    ("能力",  "你记得我昨天说了什么吗", {"bot-capabilities.md"}),
+    ("能力",  "你怎么不主动找我说话", {"bot-capabilities.md"}),
+    # --- 校园生活类（v3 新增知识维度）---
+    ("生活",  "推荐个出去走走的地方", {"campus-life.md"}),
+    ("生活",  "我要不要去健身房", {"campus-life.md"}),
+    ("生活",  "好无聊啊有什么好玩的", {"campus-life.md", "bot-emotional-support.md"}),
+    ("生活",  "我也想喝奶茶", {"campus-life.md", "faq-takeout.md"}),
 ]
 
 
