@@ -35,7 +35,15 @@ MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-zh-v1.5")
 
 
 def load_chunks() -> list[dict]:
-    """读取全部 md → 剥来源脚注 → 切片；返回 [{'id','text','meta'}]"""
+    """读取全部 md → 剥来源脚注 → 切片；返回 [{'id','text','meta'}]
+
+    切片策略（v2，badcase 驱动的迭代）：
+      - 问答对照行（`- 「...」→ ...`）每条独立成 chunk，并带上文件标题作上下文
+        —— 短查询 vs 整卡片的相似度会被卡片其余内容稀释（实测 0.41-0.47 过不了 0.5 阈值，
+           而闲聊题也有 0.40-0.48，两组分布重叠、阈值无解）；单条问答成 chunk 后
+           问题原句占比 1/3，知识题分数显著抬升、闲聊题不变，分布被拉开
+      - 其余段落照旧：按 ## 小节切，超 400 字按段落累积二切
+    """
     chunks: list[dict] = []
     for md in sorted(KB_DIR.glob("*.md")):
         lines = md.read_text(encoding="utf-8").splitlines()
@@ -43,17 +51,42 @@ def load_chunks() -> list[dict]:
         while lines and (not lines[-1].strip() or lines[-1].lstrip().startswith("> ")):
             lines.pop()
         body = "\n".join(lines).strip()
+        title_line = next((l.lstrip("# ").strip() for l in lines if l.startswith("# ")), md.stem)
 
-        # 按 ## 小节切；无小节则整个文件是一个 chunk
-        for i, sec in enumerate(s for s in re.split(r"\n(?=## )", body) if s.strip()):
-            sec = sec.strip()
-            pieces = [sec] if len(sec) <= CHUNK_MAX else _split_by_paragraph(sec)
-            for j, piece in enumerate(pieces):
+        qa_idx = 0
+        para_buf: list[str] = []
+
+        def flush_para() -> None:
+            """把累积的普通段落按旧逻辑切片入库"""
+            nonlocal para_buf, qa_idx
+            text = "\n".join(para_buf).strip()
+            para_buf = []
+            if not text:
+                return
+            for i, sec in enumerate(s for s in re.split(r"\n(?=## )", text) if s.strip()):
+                sec = sec.strip()
+                pieces = [sec] if len(sec) <= CHUNK_MAX else _split_by_paragraph(sec)
+                for j, piece in enumerate(pieces):
+                    chunks.append({
+                        "id": hashlib.sha1(f"{md.name}::p{qa_idx}_{j}".encode()).hexdigest()[:16],
+                        "text": piece,
+                        "meta": {"source": md.name, "title": md.stem, "chunk": qa_idx + j},
+                    })
+
+        for line in body.splitlines():
+            s = line.strip()
+            # 问答对照行：单条成 chunk（带文件标题，保持自包含）
+            if s.startswith("- 「") and "→" in s:
+                flush_para()
                 chunks.append({
-                    "id": hashlib.sha1(f"{md.name}::{j}".encode()).hexdigest()[:16],
-                    "text": piece,
-                    "meta": {"source": md.name, "title": md.stem, "chunk": j},
+                    "id": hashlib.sha1(f"{md.name}::qa{qa_idx}".encode()).hexdigest()[:16],
+                    "text": f"{title_line}｜{s}",
+                    "meta": {"source": md.name, "title": md.stem, "chunk": f"qa{qa_idx}"},
                 })
+                qa_idx += 1
+            else:
+                para_buf.append(line)
+        flush_para()
     return chunks
 
 
@@ -109,6 +142,10 @@ def main() -> None:
         COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},   # 关键：bge 用 cosine，Chroma 默认 l2
     )
+    # 先按来源清旧 chunk：知识卡改动后 chunk 数可能变少，upsert 只覆盖同 id，
+    # 多出来的旧 chunk 会残留（chunk 漂移）→ 变更新前先整文件删除
+    for source in {c["meta"]["source"] for c in chunks}:
+        col.delete(where={"source": source})
     col.upsert(
         ids=[c["id"] for c in chunks],
         embeddings=vectors,

@@ -23,7 +23,8 @@ flowchart LR
 
 ## 核心特性
 
-- 多 Provider 热切换：直连 / 代理双通道，运行期切换成本 0
+- **RAG 知识库问答**：Chroma + bge-large-zh 向量检索，AstrBot 插件非侵入接入（命中注入、未命中放行、异常降级），30 问评测 76.7%
+- 多 Provider 热切换：直连 / 代理双通道，运行期切换成本 0（当前主力 DeepSeek V4.1 Flash 官网直连）
 - 桥接层 3 种 Provider（opencode / Moonshot / Anthropic）× 2 种模式（direct / proxy）
 - 人设与长期记忆：system prompt 指令体系
 - 319+ 条真实对话 badcase 驱动的提示词迭代
@@ -67,7 +68,7 @@ qq-agent-bot/
 ## Roadmap
 
 - [x] 阶段 0：Git 入库 + 项目规范化
-- [ ] RAG 知识库问答（Chroma + bge Embedding）
+- [x] RAG 知识库问答（Chroma + bge Embedding，AstrBot 插件接入；30 问评测 76.7%，badcase 驱动两轮迭代 56.7% → 76.7%）
 - [ ] Agent 工作流复刻与对比（Dify）
 - [ ] FastAPI 服务化 + Docker 容器化
 - [ ] 对话数据入库与 SQL badcase 分析
